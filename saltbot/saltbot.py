@@ -5,7 +5,7 @@ import uuid
 import argparse
 import requests
 import StringIO
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, PackageLoader
 from requests.auth import HTTPBasicAuth
 from requests import Request
 from saltbot_check import check_building
@@ -28,7 +28,7 @@ def branch_package(auth, project, package):
 def update_service(auth, project, package, gitbranch):
     # generate _service file content
     # upload it to branched project
-    env = Environment(loader=FileSystemLoader('./saltbot/templates', followlinks=True))
+    env = Environment(loader=PackageLoader('saltbot', 'templates'))
     template = env.get_template('_service')
     _service = template.render(branch=gitbranch)
     response = requests.put(
