@@ -1,0 +1,28 @@
+<services>
+  <service name="tar_scm">
+    <param name="scm">git</param>
+    <param name="url">https://github.com/dincamihai/salt.git</param>
+    <param name="exclude">.git</param>
+    <param name="subdir">obs</param>
+    <param name="filename">package</param>
+    <param name="revision">{{ branch }}</param>
+    <param name="changesgenerate">enable</param>
+  </service>
+  <service name="extract_file">
+    <param name="archive">*package*.tar</param>
+    <param name="files">*/*</param>
+  </service>
+  <service name="tar_scm">
+    <param name="scm">git</param>
+    <param name="url">https://github.com/saltstack/salt.git</param>
+    <param name="filename">salt</param>
+    <param name="exclude">.git</param>
+    <param name="revision">v2017.7.1</param>
+  </service>
+  <service name="recompress">
+    <param name="file">*.tar</param>
+    <param name="compression">gz</param>
+  </service>
+  <service name="set_version">
+  </service>
+</services>
