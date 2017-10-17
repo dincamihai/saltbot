@@ -25,12 +25,16 @@ def branch_package(auth, project, package):
     return branched_project
 
 
-def update_service(auth, project, package, gitbranch):
+def render_service(gitbranch):
     # generate _service file content
-    # upload it to branched project
     env = Environment(loader=PackageLoader('saltbot', 'templates'))
     template = env.get_template('_service')
-    _service = template.render(branch=gitbranch)
+    return template.render(branch=gitbranch)
+
+
+def update_service(auth, project, package, gitbranch):
+    # upload it to branched project
+    _service = render_service(gitbranch)
     response = requests.put(
         'https://api.opensuse.org/source/{project}/{package}/_service'.format(project=project, package=package),
         data=_service,
