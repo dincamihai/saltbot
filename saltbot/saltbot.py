@@ -74,7 +74,7 @@ def update_service(auth, project, package, gitbranch):
 def fetch_events(auth, owner, repo):
     etag = None
     if os.path.isfile('cache/events.etag'):
-        with open('events.etag', 'rb') as events_etag:
+        with open('cache/events.etag', 'rb') as events_etag:
             etag = events_etag.read().strip()
     headers = dict()
 
