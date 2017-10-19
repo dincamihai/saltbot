@@ -9,5 +9,5 @@ setup(
         'jinja2',
         'beautifulsoup4'
     ],
-    scripts=['saltbot/saltbot.py', 'saltbot/saltbot_check.py']
+    scripts=['saltbot/saltbot.py']
 )
