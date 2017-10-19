@@ -144,7 +144,7 @@ def poll_pr(owner, repo, job):
         print("Processing Event: {id}".format(id=event['id']))
         trigger_jenkins(job, event['payload']['pull_request'])
         time.sleep(5)
-    exit(1)
+    exit(0)
 
 
 @authenticate('jenkins')
