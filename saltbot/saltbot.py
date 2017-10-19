@@ -105,13 +105,14 @@ def fetch_prs(auth, owner, repo, branch):
     if not response.status_code == 304:
         new_events = response.json()
 
-    filtered_new_events = [
-        event for event in new_events if (
+    def event_filter(event):
+        return (
             event['type'] == 'PullRequestEvent' and
             event['payload']['pull_request']['state'] == 'open' and
-            event['payload']['pull_request']['head']['ref'] == branch
+            event['payload']['pull_request']['base']['ref'] == branch
         )
-    ]
+
+    filtered_new_events = filter(event_filter, new_events)
 
     events = cached_events + filtered_new_events
 
