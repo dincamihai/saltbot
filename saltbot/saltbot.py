@@ -237,8 +237,8 @@ def main():
 
     parser_build.add_argument('--action', dest='action', type=str, default='build')
     parser_build.add_argument('--project', required=True, dest='project', type=str)
-    parser_poll.add_argument('--owner', required=True, dest='owner', type=str)
-    parser_poll.add_argument('--repo', required=True, dest='repo', type=str)
+    parser_build.add_argument('--owner', required=True, dest='owner', type=str)
+    parser_build.add_argument('--repo', required=True, dest='repo', type=str)
     parser_build.add_argument('--gitbranch', required=True, dest='gitbranch', type=str)
 
     args = parser.parse_args()
