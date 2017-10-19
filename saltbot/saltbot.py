@@ -93,7 +93,7 @@ def fetch_events(auth, owner, repo):
 
 
 @authenticate('git')
-def fetch_prs(auth, owner, repo):
+def fetch_prs(auth, owner, repo, branch):
     response = fetch_events(owner, repo)
     new_events = []
     cached_events = []
@@ -105,22 +105,23 @@ def fetch_prs(auth, owner, repo):
     if not response.status_code == 304:
         new_events = response.json()
 
-    new_events = [
+    filtered_new_events = [
         event for event in new_events if (
             event['type'] == 'PullRequestEvent' and
-            event['payload']['pull_request']['state'] == 'open'
+            event['payload']['pull_request']['state'] == 'open' and
+            event['payload']['pull_request']['head']['ref'] == branch
         )
     ]
 
-    events = cached_events + new_events
+    events = cached_events + filtered_new_events
 
     with open('events.response', 'wb') as events_response:
         json.dump(events, events_response, indent=4)
 
 
-def pop_event(owner, repo):
+def pop_event(owner, repo, branch):
 
-    fetch_prs(owner, repo)
+    fetch_prs(owner, repo, branch)
 
     event = None
 
@@ -136,9 +137,9 @@ def pop_event(owner, repo):
     return event
 
 
-def poll_pr(owner, repo, job):
+def poll_pr(owner, repo, branch, job):
     while True:
-        event = pop_event(owner, repo)
+        event = pop_event(owner, repo, branch)
         if not event:
             break
         print("Processing Event: {id}".format(id=event['id']))
@@ -186,6 +187,7 @@ def main():
     parser_poll.add_argument('--action', dest='action', type=str, default='poll')
     parser_poll.add_argument('--owner', required=True, dest='owner', type=str)
     parser_poll.add_argument('--repo', required=True, dest='repo', type=str)
+    parser_poll.add_argument('--branch', required=True, dest='branch', type=str, default='master')
     parser_poll.add_argument('--job', required=True, dest='job', type=str)
 
     parser_build.add_argument('--action', dest='action', type=str, default='build')
@@ -195,7 +197,7 @@ def main():
     args = parser.parse_args()
 
     if args.action == 'poll':
-        poll_pr(args.owner, args.repo, args.job)
+        poll_pr(args.owner, args.repo, args.branch, args.job)
     elif args.action == 'build':
         branched_project = branch_package(args.project, 'salt')
         update_service(branched_project, 'salt', args.gitbranch)
