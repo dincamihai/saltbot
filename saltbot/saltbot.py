@@ -127,22 +127,22 @@ def pop_event(owner, repo):
     return event
 
 
-def trigger_on_pr(owner, repo):
+def poll_pr(owner, repo, job):
     event = True
     while event:
         event = pop_event(owner, repo)
         if not event:
             continue
-        print("Processing Event:")
-        print(event)
         if event['type'] == 'PullRequestEvent' and event['payload']['pull_request']['state'] == 'open':
+            print("Processing Event:")
+            print(event['payload']['pull_request']['url'])
             # statuses = requests.get(
             #     event['payload']['pull_request']['_links']['statuses']['href'],
             #     auth=auth
             # )
             # if 'pending' in  statuses.json():
             #     continue
-            trigger_jenkins_job(event['payload']['pull_request'])
+            trigger_jenkins(job, event['payload']['pull_request'])
             time.sleep(5)
         else:
             continue
@@ -150,13 +150,13 @@ def trigger_on_pr(owner, repo):
 
 
 @authenticate('jenkins')
-def trigger_jenkins_job(auth, pr):
+def trigger_jenkins(auth, job, pr):
     url = "https://ci.suse.de/crumbIssuer/api/json"
     crumb_response = requests.get(url, verify=False, auth=auth)
     crumb_response.raise_for_status()
     response = requests.post(
         "https://ci.suse.de/job/{name}/build?delay=0sec".format(
-            name='salt-obs-build'
+            name=job
         ),
         data={
             "json": json.dumps({
@@ -178,12 +178,30 @@ def trigger_jenkins_job(auth, pr):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--project', required=True, dest='project', type=str)
-    parser.add_argument('--gitbranch', required=True, dest='gitbranch', type=str)
+
+    subparsers = parser.add_subparsers()
+
+    parser_poll = subparsers.add_parser('poll')
+    parser_build = subparsers.add_parser('build')
+
+    parser_poll.add_argument('--action', dest='action', type=str, default='poll')
+    parser_poll.add_argument('--owner', required=True, dest='owner', type=str)
+    parser_poll.add_argument('--repo', required=True, dest='repo', type=str)
+    parser_poll.add_argument('--job', required=True, dest='job', type=str)
+
+    parser_build.add_argument('--action', dest='action', type=str, default='build')
+    parser_build.add_argument('--project', required=True, dest='project', type=str)
+    parser_build.add_argument('--gitbranch', required=True, dest='gitbranch', type=str)
+
     args = parser.parse_args()
-    branched_project = branch_package(args.project, 'salt')
-    update_service(branched_project, 'salt', args.gitbranch)
-    response = check_building(config.obs['token'], branched_project)
+
+    if args.action == 'poll':
+        poll_pr(args.owner, args.repo, args.job)
+    elif args.action == 'build':
+        branched_project = branch_package(args.project, 'salt')
+        update_service(branched_project, 'salt', args.gitbranch)
+        response = check_building(config.obs['token'], branched_project)
+
     if not response:
         exit(1)
     exit(0)
