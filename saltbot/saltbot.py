@@ -73,7 +73,7 @@ def update_service(auth, project, package, gitbranch):
 @authenticate('git')
 def fetch_events(auth, owner, repo):
     etag = None
-    if os.path.isfile('events.etag'):
+    if os.path.isfile('cache/events.etag'):
         with open('events.etag', 'rb') as events_etag:
             etag = events_etag.read().strip()
     headers = dict()
@@ -87,7 +87,7 @@ def fetch_events(auth, owner, repo):
         auth=auth
     )
     response.raise_for_status()
-    with open('events.etag', 'wb') as events_etag:
+    with open('cache/events.etag', 'wb') as events_etag:
         events_etag.write(response.headers.get('etag'))
     return response
 
@@ -98,8 +98,8 @@ def fetch_prs(auth, owner, repo, branch):
     new_events = []
     cached_events = []
 
-    if os.path.isfile('events.response'):
-        with open('events.response', 'rb') as events_response:
+    if os.path.isfile('cache/events.response'):
+        with open('cache/events.response', 'rb') as events_response:
             cached_events = json.load(events_response)
 
     if not response.status_code == 304:
@@ -115,7 +115,7 @@ def fetch_prs(auth, owner, repo, branch):
 
     events = cached_events + filtered_new_events
 
-    with open('events.response', 'wb') as events_response:
+    with open('cache/events.response', 'wb') as events_response:
         json.dump(events, events_response, indent=4)
 
 
@@ -125,13 +125,13 @@ def pop_event(owner, repo, branch):
 
     event = None
 
-    with open('events.response', 'rb') as events_response:
+    with open('cache/events.response', 'rb') as events_response:
         events = json.load(events_response)
 
     if events:
         event = events.pop()
 
-    with open('events.response', 'wb') as events_response:
+    with open('cache/events.response', 'wb') as events_response:
         json.dump(events, events_response, indent=4)
 
     return event

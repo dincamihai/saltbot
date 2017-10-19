@@ -15,3 +15,4 @@ ARG NOCACHE=nocache
 RUN git clone https://github.com/dincamihai/saltbot.git /saltbot
 COPY prod_config.py /saltbot/config.py
 RUN pip install -e /saltbot
+RUN mkdir /saltbot/cache
