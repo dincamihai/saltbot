@@ -11,8 +11,48 @@ from functools import wraps
 from jinja2 import Environment, PackageLoader
 from requests.auth import HTTPBasicAuth
 from requests import Request
-from saltbot_check import check_building
+from bs4 import BeautifulSoup
 import config
+
+
+def check_building(auth, token, project):
+    not_done = True
+    retries = 3
+    session = requests.Session()
+    request = Request(
+        'GET',
+        'https://api.opensuse.org/build/{project}/_result'.format(project=project),
+        auth=auth
+    )
+    prepped = request.prepare()
+    while not_done:
+        response = session.send(prepped)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, 'html.parser')
+        print soup
+        results = soup.findAll('result')
+        if (
+            any(map(lambda it: it.get('dirty') == 'true', results)) or
+            any(map(lambda it: it.get('code') == 'unknown', results))
+        ):
+            time.sleep(120)
+            continue
+        statuses = [it.get('code') for it in soup.findAll('status')]
+        if 'broken' in statuses and retries > 0:
+            response = requests.post(
+                'https://api.opensuse.org/trigger/runservice',
+                headers={'Authorization': 'Token {token}'.format(token=token)},
+                data={'project': project, 'package': 'salt'},
+            )
+            retries -= 1
+        elif retries <= 0:
+            break
+        elif 'failed' in statuses:
+            break
+        elif all(map(lambda it: it == 'succeeded', statuses)):
+            return True
+        time.sleep(120)
+    return False
 
 
 def get_auth(service):
