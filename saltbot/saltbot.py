@@ -95,17 +95,17 @@ def branch_package(auth, project, package):
     return branched_project
 
 
-def render_service(gitbranch):
+def render_service(owner, repo, gitbranch):
     # generate _service file content
     env = Environment(loader=PackageLoader('saltbot', 'templates'))
     template = env.get_template('_service')
-    return template.render(branch=gitbranch)
+    return template.render(owner=owner, repo=repo, branch=gitbranch)
 
 
 @authenticate('obs')
-def update_service(auth, project, package, gitbranch):
+def update_service(auth, project, package, owner, repo, gitbranch):
     # upload it to branched project
-    _service = render_service(gitbranch)
+    _service = render_service(owner, repo, gitbranch)
     response = requests.put(
         'https://api.opensuse.org/source/{project}/{package}/_service'.format(project=project, package=package),
         data=_service,
@@ -237,6 +237,8 @@ def main():
 
     parser_build.add_argument('--action', dest='action', type=str, default='build')
     parser_build.add_argument('--project', required=True, dest='project', type=str)
+    parser_poll.add_argument('--owner', required=True, dest='owner', type=str)
+    parser_poll.add_argument('--repo', required=True, dest='repo', type=str)
     parser_build.add_argument('--gitbranch', required=True, dest='gitbranch', type=str)
 
     args = parser.parse_args()
@@ -245,7 +247,7 @@ def main():
         poll_pr(args.owner, args.repo, args.branch, args.job)
     elif args.action == 'build':
         branched_project = branch_package(args.project, 'salt')
-        update_service(branched_project, 'salt', args.gitbranch)
+        update_service(branched_project, 'salt', args.owner, args.repo, args.gitbranch)
         response = check_building(config.obs['token'], branched_project)
 
     if not response:
