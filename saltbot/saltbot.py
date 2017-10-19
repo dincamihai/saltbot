@@ -15,6 +15,18 @@ from bs4 import BeautifulSoup
 import config
 
 
+def authenticate(service):
+
+    def decorator(fun):
+        @wraps(fun)
+        def wrapper(*args, **kwargs):
+            return fun(get_auth(service), *args, **kwargs)
+        return wrapper
+
+    return decorator
+
+
+@authenticate('obs')
 def check_building(auth, token, project):
     not_done = True
     retries = 3
@@ -66,22 +78,14 @@ def get_auth(service):
     return auth
 
 
-def authenticate(service):
-
-    def decorator(fun):
-        @wraps(fun)
-        def wrapper(*args, **kwargs):
-            return fun(get_auth(service), *args, **kwargs)
-        return wrapper
-
-    return decorator
-
-
 @authenticate('obs')
 def branch_package(auth, project, package):
     # branch project
     ident = uuid.uuid1()
-    branched_project = '{project}-{ident}'.format(project=project, ident=ident.hex)
+    branched_project = 'home:{user}:{project}-{ident}'.format(
+        user=config.obs['user'],
+        project=':'.join(project.split(':')[-3:]),
+        ident=ident.hex)
     response = requests.post(
         'https://api.opensuse.org/source/{project}/{package}?cmd=branch'.format(project=project, package=package),
         data={'target_project': branched_project},
