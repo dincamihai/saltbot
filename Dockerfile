@@ -12,5 +12,4 @@ RUN pip install -e /saltbot
 COPY prod_config.py /saltbot/config.py
 COPY Makefile /root/Makefile
 
-ENTRYPOINT ["make", "-f", "/root/Makefile", "-C", "/saltbot"]
-CMD ["default"]
+ENTRYPOINT ["saltbot.py"]

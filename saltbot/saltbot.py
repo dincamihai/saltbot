@@ -73,10 +73,11 @@ def update_service(auth, project, package, gitbranch):
 @authenticate('git')
 def fetch_events(auth, owner, repo):
     etag = None
-    if os.path.isfile('events.tag'):
+    if os.path.isfile('events.etag'):
         with open('events.etag', 'rb') as events_etag:
             etag = events_etag.read().strip()
     headers = dict()
+
     if etag:
         headers['If-None-Match'] = etag
     response = requests.get(
@@ -103,6 +104,14 @@ def fetch_prs(auth, owner, repo):
 
     if not response.status_code == 304:
         new_events = response.json()
+
+    new_events = [
+        event for event in new_events if (
+            event['type'] == 'PullRequestEvent' and
+            event['payload']['pull_request']['state'] == 'open'
+        )
+    ]
+
     events = cached_events + new_events
 
     with open('events.response', 'wb') as events_response:
@@ -128,29 +137,19 @@ def pop_event(owner, repo):
 
 
 def poll_pr(owner, repo, job):
-    event = True
-    while event:
+    while True:
         event = pop_event(owner, repo)
         if not event:
-            continue
-        if event['type'] == 'PullRequestEvent' and event['payload']['pull_request']['state'] == 'open':
-            print("Processing Event:")
-            print(event['payload']['pull_request']['url'])
-            # statuses = requests.get(
-            #     event['payload']['pull_request']['_links']['statuses']['href'],
-            #     auth=auth
-            # )
-            # if 'pending' in  statuses.json():
-            #     continue
-            trigger_jenkins(job, event['payload']['pull_request'])
-            time.sleep(5)
-        else:
-            continue
+            break
+        print("Processing Event: {id}".format(id=event['id']))
+        trigger_jenkins(job, event['payload']['pull_request'])
+        time.sleep(5)
     exit(1)
 
 
 @authenticate('jenkins')
 def trigger_jenkins(auth, job, pr):
+    print("Trigger for PR: {url}".format(url=pr['url']))
     url = "https://ci.suse.de/crumbIssuer/api/json"
     crumb_response = requests.get(url, verify=False, auth=auth)
     crumb_response.raise_for_status()
