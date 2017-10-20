@@ -17,7 +17,7 @@
     <param name="url">https://github.com/saltstack/salt.git</param>
     <param name="filename">salt</param>
     <param name="exclude">.git</param>
-    <param name="revision">v2017.7.1</param>
+    <param name="revision">v2016.11.4</param>
   </service>
   <service name="recompress">
     <param name="file">*.tar</param>
