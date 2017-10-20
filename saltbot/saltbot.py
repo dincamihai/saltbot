@@ -41,8 +41,8 @@ def check_building(auth, token, project):
         response = session.send(prepped)
         response.raise_for_status()
         soup = BeautifulSoup(response.content, 'html.parser')
-        print soup
         results = soup.findAll('result')
+        print(results)
         if (
             any(map(lambda it: it.get('dirty') == 'true', results)) or
             any(map(lambda it: it.get('code') == 'unknown', results))
@@ -285,6 +285,7 @@ def main():
         )
         set_status_response.raise_for_status()
         branched_project = branch_package(args.project, 'salt')
+        print(branched_project)
         update_service(branched_project, 'salt', args.owner, args.repo, args.gitbranch)
         response = check_building(config.obs['token'], branched_project)
         set_status_response = set_status(
