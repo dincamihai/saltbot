@@ -92,6 +92,7 @@ def branch_package(auth, project, package):
         auth=auth
     )
     response.raise_for_status()
+    print('https://build.opensuse.org/project/show/{0}'.format(branched_project))
     return branched_project
 
 
@@ -289,7 +290,7 @@ def main():
             {
                 'state': 'success' if response is True else 'failure',
                 'target_url': args.build,
-                'description': 'Building',
+                'description': 'Result',
                 'context': 'jenkins/salt-obs-build',
             }
         )
