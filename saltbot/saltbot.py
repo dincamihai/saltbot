@@ -188,11 +188,13 @@ def poll_pr(owner, repo, branch, job):
     while True:
         event = pop_event(owner, repo, branch)
         if not event:
+            print("No events left")
             break
         print("Processing Event: {id}".format(id=event['id']))
         statuses_response = get_statuses(event['payload']['pull_request'])
         for status in statuses_response.json():
             if context == status['context']:
+                print("Skipping event. Already processed")
                 continue
         set_status_response = set_status(
             event['payload']['pull_request']['_links']['statuses']['href'],
