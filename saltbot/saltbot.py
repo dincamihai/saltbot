@@ -183,34 +183,43 @@ def pop_event(owner, repo, branch):
 
 
 def poll_pr(owner, repo, branch, job):
+    context = 'jenkins/salt-obs-build'
     while True:
         event = pop_event(owner, repo, branch)
         if not event:
             break
         print("Processing Event: {id}".format(id=event['id']))
-        trigger_jenkins(job, event['payload']['pull_request'])
+        statuses_response = get_statuses(event['payload']['pull_request'])
+        for status in statuses_response.json():
+            if context == status['context']:
+                continue
+        set_status_response = set_status(
+            event['payload']['pull_request']['_links']['statuses']['href'],
+            {
+                'state': 'pending',
+                'target_url': '',
+                'description': 'Picked up by jenkins',
+                'context': 'jenkins/salt-obs-build',
+            }
+        )
+        set_status_response.raise_for_status()
+        build = trigger_jenkins(
+            job,
+            event['payload']['pull_request'],
+            set_status_response.headers['Location'])
         time.sleep(5)
     exit(0)
 
 
 @authenticate('jenkins')
-def trigger_jenkins(auth, job, pr):
+def trigger_jenkins(auth, job, pr, status_url):
     print("Trigger for PR: {url}".format(url=pr['url']))
     url = "https://ci.suse.de/crumbIssuer/api/json"
     crumb_response = requests.get(url, verify=False, auth=auth)
     crumb_response.raise_for_status()
     response = requests.post(
-        "https://ci.suse.de/job/{name}/build?delay=0sec".format(
-            name=job
-        ),
-        data={
-            "json": json.dumps({
-                "parameter": [{
-                    "name": "branch",
-                    "value": pr['head']['ref']
-                }]
-            })
-        },
+        "https://ci.suse.de/job/{name}/buildWithParameters".format(name=job),
+        data={"branch": pr['head']['ref'], "statusurl": status_url},
         headers={
             "Jenkins-Crumb": crumb_response.json()['crumb'],
             "Content-Length": "0"
@@ -219,6 +228,20 @@ def trigger_jenkins(auth, job, pr):
         auth=auth
     )
     response.raise_for_status()
+
+
+@authenticate('git')
+def get_statuses(auth, pr):
+    response = requests.get(pr['statuses_url'], auth=auth)
+    response.raise_for_status()
+    return response
+
+
+@authenticate('git')
+def set_status(auth, url, data):
+    response = requests.post(url, json=data, auth=auth)
+    response.raise_for_status()
+    return response
 
 
 def main():
@@ -240,15 +263,36 @@ def main():
     parser_build.add_argument('--owner', required=True, dest='owner', type=str)
     parser_build.add_argument('--repo', required=True, dest='repo', type=str)
     parser_build.add_argument('--gitbranch', required=True, dest='gitbranch', type=str)
+    parser_build.add_argument('--statusurl', required=True, dest='statusurl', type=str)
+    parser_build.add_argument('--build', required=True, dest='build', type=str)
 
     args = parser.parse_args()
 
     if args.action == 'poll':
         poll_pr(args.owner, args.repo, args.branch, args.job)
     elif args.action == 'build':
+        set_status_response = set_status(
+            args.statusurl,
+            {
+                'state': 'pending',
+                'target_url': args.build,
+                'description': 'Building',
+                'context': 'jenkins/salt-obs-build',
+            }
+        )
+        set_status_response.raise_for_status()
         branched_project = branch_package(args.project, 'salt')
         update_service(branched_project, 'salt', args.owner, args.repo, args.gitbranch)
         response = check_building(config.obs['token'], branched_project)
+        set_status_response = set_status(
+            args.statusurl,
+            {
+                'state': 'success' if response is True else 'failure',
+                'target_url': args.build,
+                'description': 'Building',
+                'context': 'jenkins/salt-obs-build',
+            }
+        )
 
     if not response:
         exit(1)

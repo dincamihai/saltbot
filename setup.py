@@ -7,7 +7,7 @@ setup(
     install_requires=[
         'requests',
         'jinja2',
-        'beautifulsoup4'
+        'beautifulsoup4',
     ],
     scripts=['saltbot/saltbot.py']
 )
